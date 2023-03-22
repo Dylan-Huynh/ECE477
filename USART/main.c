@@ -122,23 +122,23 @@ void enable_tty_interrupt(void) {
     DMA2_Channel2->CNDTR = 21;
 
     // The DIRection of copying should be from peripheral to memory
-    DMA2_Channel2->CCR |= DMA_CCR_DIR; // this sets it so it reads from peripheral
+    DMA2_Channel2->CCR |= DMA_CCR_DIR; 
 
     // Neither the total-completion nor the half-transfer interrupt should be enabled
-    DMA2_Channel2->CCR &= ~DMA_CCR_HTIE; // no total completion
-    DMA2_Channel2->CCR &= ~DMA_CCR_TCIE; // no half transfer
+    DMA2_Channel2->CCR &= ~DMA_CCR_HTIE; 
+    DMA2_Channel2->CCR &= ~DMA_CCR_TCIE; 
 
     // Both the MSIZE and the PSIZE should be set for 8 bits
     //set memory datum size to 8bit
-    DMA2_Channel2->CCR &= ~DMA_CCR_MSIZE; // clears out the bits for msize
+    DMA2_Channel2->CCR &= ~DMA_CCR_MSIZE;
     //set peripheral datum size to 8bit
-    DMA2_Channel2->CCR &= ~DMA_CCR_PSIZE; // clears out the bits for psize
+    DMA2_Channel2->CCR &= ~DMA_CCR_PSIZE;
 
     // MINC should be set to increment the CMAR
     DMA2_Channel2->CCR |= DMA_CCR_MINC; // increments the CMAR for every transfer
 
     // PINC should not be set so that CPAR always points at the USART5->RDR.
-    DMA2_Channel2->CCR &= ~DMA_CCR_PINC; // peripheral increment mode disabled
+    DMA2_Channel2->CCR &= ~DMA_CCR_PINC;
 
     // Enable CIRCular transfers.
     DMA2_Channel2->CCR |= DMA_CCR_CIRC; //Set the channel for CIRCular operation.
