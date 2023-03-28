@@ -46,11 +46,18 @@ int main(void)
 	enable_ports();
 	//enable_TIM2();
 	//TIM2->CR1 |= 0x1;
-	while(1){
 
-		play_game();
+	// Old game logic
+	/*while(1){
+
+		CheckIfTargetHit();
 		nano_wait(500);
-	}
+	}*/
+
+	// New game logic
+	init_exti();
+	pick_target();
+	for(;;) {}
 }
 
 void enable_TIM2(void){
@@ -67,70 +74,41 @@ void enable_TIM2(void){
 
 void TIM2_IRQHandler(void) {
 	TIM2->SR = ~TIM_SR_UIF;
-	play_game();
+	//CheckIfTargetHit();
 }
 
 
-void play_game(void){
-	uint32_t hit;
+void CheckIfTargetHit(uint32_t hit){
+	uint32_t light = GPIOB->ODR >> 8;
 	if (target == -1) {
 		pick_target();
 	}
-	else if (target == 1){
-		GPIOB->ODR = 0x0100;
-		hit = GPIOC->IDR;
-		hit = hit & ~0xfff0;
-		if (hit != 0x000f){
-			if (hit == 0x0007) {
-				GPIOA->ODR = 0x0100;
+	else if (hit == 0x1){
+		if (hit != 0xf){
+			if (hit == light) {
 				pick_target();
-			}
-			else {
-				GPIOA->ODR = 0x0200;
-				nano_wait(500);
 			}
 		}
 	}
-	else if (target == 2){
-		GPIOB->ODR = 0x0200;
-		hit = GPIOC->IDR;
-		hit = hit & ~0xfff0;
+	else if (hit == 0x2){
 		if (hit != 0x000f){
-			if (hit == 0x000b) {
-				GPIOA->ODR = 0x0100;
+			if (hit == light) {
 				pick_target();
-			}
-			else {
-				GPIOA->ODR = 0x0200;
 			}
 		}
 
 	}
-	else if (target == 3){
-		GPIOB->ODR = 0x0400;
-		hit = GPIOC->IDR;
-		hit = hit & ~0xfff0;
+	else if (hit == 0x4){
 		if (hit != 0x000f){
-			if (hit == 0x000d) {
-				GPIOA->ODR = 0x0100;
+			if (hit == light) {
 				pick_target();
-			}
-			else {
-				GPIOA->ODR = 0x0200;
 			}
 		}
 	}
-	else if (target == 4){
-		GPIOB->ODR = 0x0800;
-		hit = GPIOC->IDR;
-		hit = hit & ~0xfff0;
+	else if (hit == 0x8){
 		if (hit != 0x000f){
-			if (hit == 0x000e) {
-				GPIOA->ODR = 0x0100;
+			if (hit == light) {
 				pick_target();
-			}
-			else {
-				GPIOA->ODR = 0x0200;
 			}
 		}
 	}
@@ -141,6 +119,8 @@ int randomX(){
 }
 
 void pick_target(void){
+	GPIOB->BRR = 0xf00;
+	nano_wait(50000000);
 	target = randomX();
 	if (target == 1){
 		GPIOB->ODR = 0x0100;
@@ -156,3 +136,57 @@ void pick_target(void){
 	}
 }
 
+
+
+
+
+
+
+
+
+
+
+
+
+void init_exti() {
+    RCC->APB2ENR |= RCC_APB2ENR_SYSCFGCOMPEN;
+    SYSCFG->EXTICR[0] = SYSCFG->EXTICR[1] = 0;
+    SYSCFG->EXTICR[0] |= SYSCFG_EXTICR1_EXTI0_PC | SYSCFG_EXTICR1_EXTI1_PC | SYSCFG_EXTICR1_EXTI2_PC | SYSCFG_EXTICR1_EXTI3_PC;
+    SYSCFG->EXTICR[1] |= SYSCFG_EXTICR2_EXTI4_PC;
+    EXTI->FTSR |= EXTI_FTSR_TR0 | EXTI_FTSR_TR1 | EXTI_FTSR_TR2 | EXTI_FTSR_TR3 | EXTI_FTSR_TR4;
+    EXTI->IMR |= EXTI_IMR_MR0 | EXTI_IMR_MR1 | EXTI_IMR_MR2 | EXTI_IMR_MR3| EXTI_IMR_MR4;
+    NVIC->ISER[0] = 1<<EXTI0_1_IRQn | 1<<EXTI2_3_IRQn | 1<<EXTI4_15_IRQn;
+}
+
+void EXTI0_1_IRQHandler() {
+    if ((EXTI->PR) & EXTI_PR_PR0) {
+        EXTI -> PR = EXTI_PR_PR0;
+        CheckIfTargetHit(0x1);
+    }
+    else if ((EXTI->PR) & EXTI_PR_PR1) {
+        EXTI->PR = EXTI_PR_PR1;
+        CheckIfTargetHit(0x2);
+
+    }
+}
+
+void EXTI2_3_IRQHandler() {
+    if ((EXTI->PR) & EXTI_PR_PR2) {
+        EXTI->PR = EXTI_PR_PR2;
+        CheckIfTargetHit(0x4);
+
+    }
+    else if ((EXTI->PR) & EXTI_PR_PR3) {
+        EXTI->PR = EXTI_PR_PR3;
+        CheckIfTargetHit(0x8);
+
+    }
+}
+
+/*void EXTI4_15_IRQHandler() {
+    EXTI->PR = EXTI_PR_PR4;
+    GPIOC->BSRR = 0x10;
+    nano_wait(1000000000);
+    GPIOC->BRR = 0x10;
+
+}*/
