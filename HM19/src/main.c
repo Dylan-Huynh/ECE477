@@ -146,13 +146,10 @@ void enable_tty_interrupt(void) {
 // Works like line_buffer_getchar(), but does not check or clear ORE nor wait on new characters in USART
 char interrupt_getchar() {
     // TODO
-
     // USART_TypeDef *u = USART5;
-
     // If we missed reading some characters, clear the overrun flag.
     if (u->ISR & USART_ISR_ORE)
         u->ICR |= USART_ICR_ORECF;
-
     // Wait for a newline to complete the buffer.
     while(fifo_newline(&input_fifo) == 0) {
         asm volatile ("wfi"); // wait for an interrupt
@@ -183,9 +180,9 @@ int __io_getchar(void) {
 
 // name from startup_stm32.s
 void USART3_4_5_6_7_8_IRQHandler(void) {
-	if (count == MESSAGESIZE) {
-		count = 0;
-	}
+	//if (count == MESSAGESIZE) {
+	//	count = 0;
+	//}
 	//count++;
 	//int c = message2[count];
 	//USART2->TDR = c;
