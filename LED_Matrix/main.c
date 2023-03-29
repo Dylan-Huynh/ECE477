@@ -60,18 +60,18 @@ void init_usart2() {
 
 #define MESSAGESIZE 20
 
-#define MESSAGESIZE2 31
+#define MESSAGESIZE2 30
 
-unsigned char message[MESSAGESIZE] = {'B', '\x08A', '\x0A0', '\x0CA', '2', '\x0AC', '\x0A0',
-							'\b', '\1', '\0', '\x098', '(', '*', '\n', '0x0CC', '0x0A0', '0x0A0',
-							'\b', '2', 'B'};
+//unsigned char message[MESSAGESIZE] = {'B', '\x08A', '\x0A0', '\x0CA', '2', '\x0AC', '\x0A0',
+//							'\b', '\1', '\0', '\x098', '(', '*', '\n', '0x0CC', '0x0A0', '0x0A0',
+//							'\b', '2', 'B'};
 
-unsigned char message2[MESSAGESIZE] = {'\x08A', '\x08A', '\x08A', '\x08A', '\x08A', '\x08A', '\x08A',
-		'\x08A', '\x08A', '\x08A', '\x08A', '\x08A', '\x08A', '\x08A', '\x08A', '\x08A', '\x08A',
-		'\x08A', '\x08A', '\x08A'};
+//unsigned char message2[MESSAGESIZE] = {'\x08A', '\x08A', '\x08A', '\x08A', '\x08A', '\x08A', '\x08A',
+//		'\x08A', '\x08A', '\x08A', '\x08A', '\x08A', '\x08A', '\x08A', '\x08A', '\x08A', '\x08A',
+//		'\x08A', '\x08A', '\x08A'};
 
-uint8_t message3[MESSAGESIZE2] = {0x42, 0x54, 0x30, 0x31, 0x35, 0x01, 0x00, 0x00, 0x16, 0x41, 0x41, 0x33, 0x41, 0x00, 0x79,
-				 0x00, 0x61, 0x00, 0x62, 0x00, 0x61, 0x00, 0x68, 0x00, 0x69, 0x00, 0x74, 0x00, 0x6F, 0x1A};
+uint8_t message3[MESSAGESIZE2] = {0x42, 0x54, 0x30, 0x31, 0x35, 0x01, 0x00, 0x00, 0x14, 0x41, 0x41, 0x33, 0x41, 0x00, 0x79,
+				 0x00, 0x75, 0x00, 0x6b, 0x00, 0x69, 0x00, 0x20, 0x00, 0x6f, 0x00, 0x74, 0x00, 0x61, 0x26};
 
 int count = 0;
 
@@ -105,7 +105,7 @@ void enable_tty_interrupt(void) {
     DMA2_Channel1->CPAR = (uint32_t)(&(USART2->TDR)); // Set CPAR to the address of the USART5->RDR register.
 
     // CNDTR should be set to FIFOSIZE
-    DMA2_Channel1->CNDTR = MESSAGESIZE;
+    DMA2_Channel1->CNDTR = MESSAGESIZE2;
 
     // The DIRection of copying should be from peripheral to memory
     DMA2_Channel1->CCR |= DMA_CCR_DIR;
@@ -126,8 +126,8 @@ void enable_tty_interrupt(void) {
     // PINC should not be set so that CPAR always points at the USART5->RDR.
     DMA2_Channel1->CCR &= ~DMA_CCR_PINC;
 
-    // Enable CIRCular transfers.
-    DMA2_Channel1->CCR &= ~DMA_CCR_CIRC; //Set the channel for CIRCular operation.
+    // Disable CIRCular transfers.
+    DMA2_Channel1->CCR &= ~DMA_CCR_CIRC; //Don't set CIRCular operation.
 
     // Do not enable MEM2MEM transfers.
     DMA2_Channel1->CCR &= ~DMA_CCR_MEM2MEM; // memory to memory mode disabled
@@ -144,13 +144,10 @@ void enable_tty_interrupt(void) {
 // Works like line_buffer_getchar(), but does not check or clear ORE nor wait on new characters in USART
 char interrupt_getchar() {
     // TODO
-
     // USART_TypeDef *u = USART5;
-
     // If we missed reading some characters, clear the overrun flag.
     if (u->ISR & USART_ISR_ORE)
         u->ICR |= USART_ICR_ORECF;
-
     // Wait for a newline to complete the buffer.
     while(fifo_newline(&input_fifo) == 0) {
         asm volatile ("wfi"); // wait for an interrupt
@@ -184,19 +181,20 @@ void USART2_IRQHandler(void) {
 	if (count == MESSAGESIZE) {
 		count = 0;
 	}
-	//count++;
-	//int c = message2[count];
-	//USART2->TDR = c;
+	count++;
+	int c = message3[count];
+	while(!(USART2->ISR & USART_ISR_TXE));
+	USART2->TDR = c;
 }
 
 int main() {
     init_usart2();
-    //enable_tty_interrupt();
-    for(;;) {
-    	if (count == MESSAGESIZE2) break;
-    	int c = message3[count];
-    	count++;
-    	__io_putchar(c);
-    }
+    enable_tty_interrupt();
+    //for(;;) {
+    //	if (count == MESSAGESIZE2) break;
+    //	int c = message3[count];
+    //	count++;
+    //	__io_putchar(c);
+    //}
 }
 #endif
