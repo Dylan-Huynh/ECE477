@@ -156,6 +156,7 @@ static int target = -1; // neutral state
 static int gamemode = -1; // menu
 static int time_left = GAMETIME; // time for gamemode_2 - 1 second
 static int targets_hit = 0; // amount of targets hit in gamemode_2
+static int time_out = 0;
 
 // gamemode 3 specific variables
 static int wait_mode = 0; //wait mode for the gamemode_3, 0 if not lighting target, 1 when it lets player hit, 2 is pause mode
@@ -254,6 +255,31 @@ int randomX() {
     return pick;
 }
 
+//rand function to pick two-4 targets input is how many target to pick returns a 4, will be 5 in full mode bit hex number to decide targets
+uint8_t randomMulti(int n) {
+	if (n == 4){ //will be 5 in final
+		return 0xf;
+	}
+	if (n == 3) {
+		int num = rand() % 4;
+		return (0xf & ~ 1 < num); // This picks a number between 0-3, then takes that target out
+	}
+	if (n == 2) {
+		int num1 = rand() % 4;
+		int num2 = rand() % 4;
+		while (num2 == num1) num2 = rand() % 4;
+		return (0x1 < num1 | 0x1 < num2);
+	}
+	/* For final
+	if (n == 3) {
+		int num1 = rand() % 4;
+		int num2 = rand() % 4;
+		while (num2 == num1) num2 = rand() % 4;
+		return (0x1f & ~(0x1 < num1 | 0x1 < num2)); //chooses 3 of 5
+	}
+	 */
+}
+
 // logic of setting up the picking up targets
 void pick_target(void){
 	GPIOB->BRR = 0xf00;
@@ -328,6 +354,7 @@ void change_target(void){
 // Checks if Target is hit by comparing lighting to see if it is the same as the hit mark
 void CheckIfTargetHit(uint32_t hit) {
     uint32_t light = GPIOB->ODR >> 8; // Makes a check variable of light output
+    time_out = 0;
     if (gamemode == 3) {
     	if (wait_mode == 0) { // do nothing if waiting
     		return;
@@ -387,19 +414,21 @@ void CheckIfTargetHit(uint32_t hit) {
 // Uses Usart to send input array, which is a size 42 array though to draw on the LED Matrix
 void send_LED_message(uint8_t* arr) {
 	for(int i =0; i <= MESSAGESIZE; i++) {
-		while(!(USART2->ISR & USART_ISR_TXE));
-		USART2->TDR = arr[i];
+		while(!(USART1->ISR & USART_ISR_TXE));
+		USART1->TDR = arr[i];
 	}
 }
 
 // makes initializations for menu mode
 void menu_setup() {
-    gamemode = 0;
+
     GPIOB->ODR = 0;
     nano_wait(1000000000);
     GPIOB->BSRR = 0x300;
     Build_LED_Targets(ledstrip, blue, blue, blue, blue, off);
 	send_LED_message(titleMessage);
+	nano_wait(1000000000);
+	gamemode = 0;
 }
 
 void init_tim1(void) {
@@ -525,8 +554,8 @@ void init_usart() {
     USART2->CR1 &= ~(USART_CR1_OVER8);
 
     // baud rate of 19200 and 9600 (19.2k/9.6k baud)
-    USART1->BRR = 0x1388; // look at table 106 of the family reference manual
-    USART2->BRR = 0x9C4; // look at table 106 of the family reference manual
+    USART1->BRR = 0x9c4; // look at table 106 of the family reference manual
+    USART2->BRR = 0x1388; // look at table 106 of the family reference manual
 
     // enable transmitter and the receiver by setting the TE bit
     USART1->CR1 |= USART_CR1_TE;
@@ -620,8 +649,8 @@ void load_and_send_bluetooth2() {
 	bluetoothGame2[21] = blade_hit;
 	bluetoothGame2[22] = blade_miss;
 	for(int i =0; i <= BLUETOOTHMESSAGESIZE; i++) {
-		while(!(USART1->ISR & USART_ISR_TXE));
-		USART1->TDR = bluetoothGame2[i];
+		while(!(USART2->ISR & USART_ISR_TXE));
+		USART2->TDR = bluetoothGame2[i];
 	}
 }
 
@@ -686,30 +715,46 @@ void init_tim2() {
  * If time remains, it will run through and decrement and put that on the screen, plus update the screen*/
 void TIM2_IRQHandler() {
     TIM2->SR = ~TIM_SR_UIF;
-    if (time_left) {
-        time_left--;
-		change_time(time_left);
-		change_score(targets_hit);
-		send_LED_message(gametimeMessage);
-        //display_handle(time_left);
-    }
-    else {
-        gamemode = -1;
-        time_left = GAMETIME;
-        GPIOB->BRR = 0xFFF;
-        TIM2->CR1 &= ~TIM_CR1_CEN;
-        TIM3->CR1 &= ~TIM_CR1_CEN;
-        Build_LED_Targets(ledstrip, red, red, red, red, red);
-		send_LED_message(gamefinishedMessage);
-        nano_wait(1000000000);
-		send_LED_message(gametimeMessage);
-		load_and_send_bluetooth2();
-        //display_handle(targets_hit);
-        nano_wait(1000000000);
-        NVIC_SystemReset();
-        menu_setup();
+    if (gamemode == 1) {
+    	if (time_out == 10) {
+    		send_LED_message(tooSlowMessage);
+    		nano_wait(1000000000);
+    		NVIC_SystemReset();
+    	}
+    	time_left++;
+    	time_out++;
+    	change_time(time_left);
+    	change_score(targets_hit);
+    	send_LED_message(gametimeMessage);
 
     }
+    else {
+    	if (time_left) {
+    	    time_left--;
+    	    change_time(time_left);
+    		change_score(targets_hit);
+    		send_LED_message(gametimeMessage);
+    	    //display_handle(time_left);
+    	}
+    	else {
+    	    gamemode = -1;
+    	    time_left = GAMETIME;
+    	    GPIOB->BRR = 0xFFF;
+    	    TIM2->CR1 &= ~TIM_CR1_CEN;
+    	    TIM3->CR1 &= ~TIM_CR1_CEN;
+    	    Build_LED_Targets(ledstrip, red, red, red, red, red);
+    	    send_LED_message(gamefinishedMessage);
+    	    nano_wait(1000000000);
+    		send_LED_message(gametimeMessage);
+    		load_and_send_bluetooth2();
+    	    //display_handle(targets_hit);
+    	    nano_wait(1000000000);
+    	    NVIC_SystemReset();
+    	    menu_setup();
+
+    	}
+    }
+
 }
 
 void init_exti() {
@@ -843,7 +888,7 @@ void init_pins() {
     GPIOA->AFR[0] |= 1<<8; //Alternate Function 1 for PA2, subject to change
 	GPIOA->AFR[1] &= ~0x0000FFFF;
 	GPIOA->AFR[1] |= 0x00002222;
-	GPIOB->PUPDR |= 0xaaaaaaa;
+	GPIOB->PUPDR |= 0xaaaa;
 	GPIOC->MODER &= ~0xffffffff; // PC0-3 inputs
 }
 
