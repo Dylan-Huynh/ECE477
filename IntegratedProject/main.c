@@ -165,6 +165,9 @@ static int counter2 = 0;
 static int wait_time = 0; // Variable to hold to say how long the timer should wait to go into play mode
 static int game2round = 0; // variable that says what round it is, exits when round 4 is finished
 
+// gamemode 5 status variable
+static uint8_t targets = 0xff; //-1 in hex;
+static int how_many = 2;
 
 // Bluetooth message data
 static uint8_t target1_hit = 0;
@@ -255,6 +258,7 @@ int randomX() {
     return pick;
 }
 
+<<<<<<< Updated upstream
 //rand function to pick two-4 targets input is how many target to pick returns a 4, will be 5 in full mode bit hex number to decide targets
 uint8_t randomMulti(int n) {
 	if (n == 4){ //will be 5 in final
@@ -278,6 +282,15 @@ uint8_t randomMulti(int n) {
 		return (0x1f & ~(0x1 < num1 | 0x1 < num2)); //chooses 3 of 5
 	}
 	 */
+=======
+void pick_multi_target() {
+	GPIOB->BRR = 0xf00;
+	nano_wait(50000000);
+	targets = randMulti();
+	GPIOB->BSRR = targets;
+	Build_LED_Multi_Targets();
+	nano_wait(10000);
+>>>>>>> Stashed changes
 }
 
 // logic of setting up the picking up targets
@@ -354,8 +367,25 @@ void change_target(void){
 // Checks if Target is hit by comparing lighting to see if it is the same as the hit mark
 void CheckIfTargetHit(uint32_t hit) {
     uint32_t light = GPIOB->ODR >> 8; // Makes a check variable of light output
+<<<<<<< Updated upstream
     time_out = 0;
     if (gamemode == 3) {
+=======
+	if (gamemode == 5) {
+		if (light & hit) { //If right hit, should turn off target, set BRR, and if no targets remain pick new ones
+			targets = targets & ~hit;
+			GPIOB->BRR = hit << 8;
+			if (light == 0) {
+				pick_multi_target()
+			}
+			else {
+				Build_LED_Multi_Targets(green);
+			}
+		}
+
+	}
+    else if (gamemode == 3) {
+>>>>>>> Stashed changes
     	if (wait_mode == 0) { // do nothing if waiting
     		return;
     	}
@@ -481,6 +511,34 @@ void Build_LED(uint8_t *ledstrip, uint8_t *color) {
 		ledstrip[k] = 0;
 	}
 
+	DMA1_Channel2->CCR |= DMA_CCR_EN;
+}
+
+//This picks which targets are off and colored
+Build_LED_Multi_Targets(uint8_t *color) {
+	DMA1_Channel2->CCR &= ~DMA_CCR_EN;
+	int targetLEDsize = NUMLED / 5;
+	int n = 0;
+	uint8_t bit;
+	while (n < 5) {
+		// Isolates bits with left shift and right shift
+		bit = targets < (8 - n + 1) > 7
+		if (bit) {
+			for(int i = targetLEDsize * n; i < targetLEDsize * (n + 1); i++) {
+				for(int j = 0; j < 24; j++){
+					ledstrip[i*24 + j] = color[j];
+				}
+			}
+		}
+		else {
+			for(int i = targetLEDsize + n; i < targetLEDsize * (n + 1); i++) {
+				for(int j = 0; j < 24; j++){
+					ledstrip[i*24 + j] = off[j];
+				}
+			}
+		}
+		n++;
+	}
 	DMA1_Channel2->CCR |= DMA_CCR_EN;
 }
 
