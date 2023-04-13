@@ -762,7 +762,7 @@ void TIM2_IRQHandler() {
 		    EXTI->FTSR &= ~(EXTI_FTSR_TR0 | EXTI_FTSR_TR1 | EXTI_FTSR_TR2 | EXTI_FTSR_TR3 | EXTI_FTSR_TR4);
     	    TIM2->CR1 &= ~TIM_CR1_CEN;
     	    TIM3->CR1 &= ~TIM_CR1_CEN;
-    	    Build_LED_Targets(ledstrip, red, red, red, red, red);
+    	    Build_LED_Targets(ledstrip, halfred, halfred, halfred, halfred, halfred);
     	    send_LED_message(gamefinishedMessage);
     	    nano_wait(1000000000);
     		send_LED_message(gametimeMessage);
@@ -798,7 +798,7 @@ void EXTI0_1_IRQHandler() {
         else if (gamemode == 0) { // menu
         	// Starts endless mode
         	time_left = 0;
-            Build_LED_Targets(ledstrip, white, white, white, white, white);
+            Build_LED_Targets(ledstrip, halfred, halfred, halfred, halfred, halfred);
             send_LED_message(mode1Message);
             nano_wait(1000000000);
             Build_LED_Targets(ledstrip, off, off, off, off, off);
@@ -817,7 +817,7 @@ void EXTI0_1_IRQHandler() {
         else if (gamemode == 0) { // menu
         	//Starts timed mode
             targets_hit = 0;
-            Build_LED_Targets(ledstrip, white, white, white, white, white);
+            Build_LED_Targets(ledstrip, halfred, halfred, halfred, halfred, halfred);
 			send_LED_message(mode2Message);
             nano_wait(1000000000);
             Build_LED_Targets(ledstrip, off, off, off, off, off);
@@ -839,7 +839,7 @@ void EXTI2_3_IRQHandler() {
         if (gamemode == -1) {}
         else if (gamemode == 0) { // menu
         	//Starts reaction time mode
-            Build_LED_Targets(ledstrip, white, white, white, white, white);
+            Build_LED_Targets(ledstrip, halfred, halfred, halfred, halfred, halfred);
             send_LED_message(mode3Message);
             nano_wait(1000000000);
         	roundMessage[34] = game2round + 49;
@@ -861,7 +861,7 @@ void EXTI2_3_IRQHandler() {
         else if (gamemode == 0) { // menu
             //Starts moving mode
         	targets_hit = 0;
-            Build_LED_Targets(ledstrip, white, white, white, white, white);
+            Build_LED_Targets(ledstrip, halfred, halfred, halfred, halfred, halfred);
             send_LED_message(mode4Message);
             nano_wait(1000000000);
             Build_LED_Targets(ledstrip, off, off, off, off, off);
@@ -887,7 +887,7 @@ void EXTI4_15_IRQHandler() {
         else if (gamemode == 0) { // menu
             //Starts multi mode
         	targets_hit = 0;
-            Build_LED_Targets(ledstrip, white, white, white, white, white);
+            Build_LED_Targets(ledstrip, halfred, halfred, halfred, halfred, halfred);
             send_LED_message(mode4Message);
             nano_wait(1000000000);
             Build_LED_Targets(ledstrip, off, off, off, off, off);
