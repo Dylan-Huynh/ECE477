@@ -3,9 +3,7 @@
 //            THIS PROGRAM IS FOR GAME MODE TESTING
 //
 //
-//				Notes: Gamemode 0 is menu, 1 is endless, 2 is timed,
-//				3 is reaction, 4 is moving, 5 is multi
-//
+//				Notes: Gamemode 0 is menu, 1 is endless, 2 is timed
 //============================================================================
 
 #include "stm32f0xx.h"
@@ -13,8 +11,9 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <math.h>
+#include <string.h>
 
-#define GAMETIME 20
+#define GAMETIME 3
 #define ONE (38)
 #define ZERO (19)
 #define RS (0)
@@ -33,7 +32,7 @@ uint8_t gametimeMessage[MESSAGESIZE] = {0x42, 0x54, 0x30, 0x31, 0x35, 0x01, 0x00
 uint8_t titleMessage[MESSAGESIZE] = {0x42, 0x54, 0x30, 0x31, 0x35, 0x01, 0x00, 0x00, 0x21, 0x41, 0x41, 0x33, 0x41, 0x00, 0x20, 0x00, 0x20, 0x00,
 								 	 0x20, 0x00, 0x59, 0x00, 0x75, 0x00, 0x6b, 0x00, 0x69, 0x00, 0x20, 0x00, 0x4F, 0x00, 0x74, 0x00, 0x61, 0x00,
 									 0x20, 0x00, 0x20, 0x00, 0x20};
-// XXX ms 
+// XXX ms
 uint8_t reactionTimeMessage[MESSAGESIZE] = {0x42, 0x54, 0x30, 0x31, 0x35, 0x01, 0x00, 0x00, 0x21, 0x41, 0x41, 0x33, 0x41, 0x00, 0x20,
 				 	 	 	 	 	 	 0x00, 0x20, 0x00, 0x20, 0x00, 0x20, 0x00, 0x30, 0x00, 0x30, 0x00, 0x30, 0x00, 0x30, 0x00, 0x20, 0x00,
 										 0x6d, 0x00, 0x73, 0x00, 0x20, 0x00, 0x20, 0x00, 0x20};
@@ -99,15 +98,22 @@ uint8_t count3Message[MESSAGESIZE] = {0x42, 0x54, 0x30, 0x31, 0x35, 0x01, 0x00, 
 									  0x20, 0x00, 0x20, 0x00, 0x20};
 
 
-// Arrays for the BLE Messages
-uint8_t bluetoothGame1[BLUETOOTHMESSAGESIZE] = {0x01, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x02, 0x00, 0x00, 0x00, 0x03,
-												0x00, 0x00, 0x00, 0x04, 0x00, 0x00, 0x00, 0x0a, 0x00, 0x00, 0x00};
-
-uint8_t bluetoothGame2[BLUETOOTHMESSAGESIZE] = {0x02, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x02, 0x00, 0x00, 0x00, 0x03,
-												0x00, 0x00, 0x00, 0x04, 0x00, 0x00, 0x00, 0x0a, 0x00, 0x00, 0x00};
-
-uint8_t bluetoothGame3[BLUETOOTHMESSAGESIZE] = {0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x02, 0x00, 0x00, 0x00, 0x00, 0x03,
-												0x00, 0x00, 0x00, 0x00, 0x04, 0x00, 0x00, 0x00, 0x00};
+// Strings for the BLE Messages
+char *iCanSee = "Yuki Ota has been reset/powered on\n";
+char *mode1comm = "Started Mode 1 \n";
+char *mode2comm = "Started Mode 2 \n";
+char *mode3comm = "Started Mode 3 \n";
+char *mode4comm = "Started Mode 4 \n";
+char *mode5comm = "Started Mode 5 \n";
+// Manipulating char * so stiff Q_Q
+char *result1 = "Hit targets: ";
+char *result2 = " Seconds: ";
+char *game2round1 = "Round 1: ";
+char *game2round2 = "Round 2: ";
+char *game2round3 = "Round 3: ";
+char *game2round4 = "Round 4: ";
+char *game2round5 = "Round 5: ";
+//char *averageGame2 = "Average: ";
 
 // Arrays for the chains of the Arrays, tbh not sure what is needed from here, only ledstrip is used I think
 uint8_t ledstrip[LEDSIZE] = {0};
@@ -193,11 +199,11 @@ uint8_t lowestwhite[24] = {19,19,19,19,19,19,19,38,
 						19,19,19,19,19,19,19,38};
 
 // Status variables
-static int target = -1; // neutral state not used
+//static int target = -1; // neutral state
 static int gamemode = -1; // menu
 static int time_left = GAMETIME; // time for gamemode_2 - 1 second
 static int targets_hit = 0; // amount of targets hit in gamemode_2
-static int time_out = 0; // counts up to a number in timer 2 and resets system of meets it
+static int time_out = 0;
 
 // gamemode 3 specific variables
 static int wait_mode = 0; //wait mode for the gamemode_3, 0 if not lighting target, 1 when it lets player hit, 2 is pause mode
@@ -206,10 +212,25 @@ static int counter2 = 0;
 static int wait_time = 0; // Variable to hold to say how long the timer should wait to go into play mode
 static int game2round = 0; // variable that says what round it is, exits when round 4 is finished
 
-static uint8_t targets = 0xff; //-1 in hex, bit code of the 5 targets state from 5 most right bits
-static int how_many = 2; // decides how many targets to light up in  multi target mode
+static uint8_t targets = 0xff; //-1 in hex;
+static int how_many = 2;
 
-// waits for a a time decided by n
+// Bluetooth message data prolly no need
+/*
+static uint8_t target1_hit = 0;
+static uint8_t target1_miss = 0;
+static uint8_t target2_hit = 0;
+static uint8_t target2_miss = 0;
+static uint8_t target3_hit = 0;
+static uint8_t target3_miss = 0;
+static uint8_t target4_hit = 0;
+static uint8_t target4_miss = 0;
+static uint8_t target5_hit = 0;
+static uint8_t target5_miss = 0;
+static uint8_t blade_hit = 0;
+static uint8_t blade_miss = 0;
+*/
+
 static void nano_wait(unsigned int n) {
     asm(    "        mov r0,%0\n"
             "repeat: sub r0,#83\n"
@@ -221,7 +242,7 @@ int randomWait() {
 	return ((rand() % 3000) + 1500);
 }
 
-//rand function to pick 1-5 targets input is how many target to pick
+//rand function to pick two-4 targets input is how many target to pick returns a 4, will be 5 in full mode bit hex number to decide targets
 uint8_t randomMulti(int n) {
 	if (n == 5){
 		return 0x1f;
@@ -398,10 +419,10 @@ void change_reaction_time(int n){ //Loads reaction time into array, also loads i
 			break;
 	}
 	//Might need to fix this
-	bluetoothGame3[0 + shifter] = n_thousand;
-	bluetoothGame3[0 + shifter + 1] = n_hundred;
-	bluetoothGame3[0 + shifter + 2] = n_ten;
-	bluetoothGame3[0 + shifter + 3] = n_one;
+	//bluetoothGame3[0 + shifter] = n_thousand;
+	//bluetoothGame3[0 + shifter + 1] = n_hundred;
+	//bluetoothGame3[0 + shifter + 2] = n_ten;
+	//bluetoothGame3[0 + shifter + 3] = n_one;
 
 }
 
@@ -473,6 +494,7 @@ void pick_target(void){
 //When called, moves target up 1
 void change_target(void){
 	nano_wait(50000000);
+	//uint8_t check = targets;
 	if (targets == 0x1){ //1->2
 		targets = 0x2;
 		Build_LED_Targets(ledstrip, off, green, off, off, off);
@@ -489,8 +511,8 @@ void change_target(void){
 		nano_wait(10000);
 	}
 
-	else if (target == 0x8){ //4->5
-		target = 0x10;
+	else if (targets == 0x8){ //4->5
+		targets = 0x10;
 		Build_LED_Targets(ledstrip, off, off, off, off, green);
 		nano_wait(10000);
 	}
@@ -511,13 +533,13 @@ void CheckIfTargetHit(uint32_t hit) {
     		targets_hit++;
     		if (targets == 0) {
     			// Adds more targets if score is higher
-    			if (targets_hit < 14) {
+    			if (targets_hit > 14) {
     				how_many = 5;
     			}
-    			else if (targets_hit < 9) {
+    			else if (targets_hit > 9) {
     			    how_many = 4;
     			}
-    			else if (targets_hit < 4) {
+    			else if (targets_hit > 4) {
     				how_many = 3;
     			}
     			pick_multi_target(how_many, green);
@@ -552,6 +574,7 @@ void CheckIfTargetHit(uint32_t hit) {
     			wait_mode = 2; // Puts it in hold mode
     			change_reaction_time(counter2);
     			send_LED_message(reactionTimeMessage); // Reports reaction time
+    			write_and_send_results_game2(counter2);
     			counter2 = 0; // Resets reaction time
     			nano_wait(1000000000);
     			if (game2round == 5) {
@@ -567,11 +590,11 @@ void CheckIfTargetHit(uint32_t hit) {
     else if (targets == 0xff) {
         pick_target(); //don't think this happens but if in no target is set, pick one
     }
-    else if (hit == light) { // For gamemodes 1, 2, and 5
+    else if (hit == light) { // For gamemodes 1, 2, 4, and 5
         pick_target(); //Choose new target
         targets_hit++;
         if (gamemode == 4) {
-            if (wait_time - 50 <= 0) wait_time = 75;
+            if (wait_time - 50 <= 0) wait_time = 100;
             wait_time = wait_time - 50;
         }
     }
@@ -675,25 +698,111 @@ void init_usart() {
 
 }
 
-
-// Changes the parameters centered around mode2, and then sends it out def need to change this
-void load_and_send_bluetooth2() {
-	bluetoothGame2[2] = target1_hit;
-	bluetoothGame2[3] = target1_miss;
-	bluetoothGame2[5] = target2_hit;
-	bluetoothGame2[6] = target2_miss;
-	bluetoothGame2[9] = target3_hit;
-	bluetoothGame2[10] = target3_miss;
-	bluetoothGame2[13] = target4_hit;
-	bluetoothGame2[14] = target4_miss;
-	bluetoothGame2[17] = target5_hit;
-	bluetoothGame2[18] = target5_miss;
-	bluetoothGame2[21] = blade_hit;
-	bluetoothGame2[22] = blade_miss;
-	for(int i =0; i <= BLUETOOTHMESSAGESIZE; i++) {
+void send_bluetooth_char(char* sendee) {
+	for(int i = 0; i <= strlen(sendee); i++) {
 		while(!(USART2->ISR & USART_ISR_TXE));
-		USART2->TDR = bluetoothGame2[i];
+		USART2->TDR = sendee[i];
 	}
+}
+
+void send_bluetooth_char_four_at_once(char* sendee1, char* sendee2, char* sendee3, char* sendee4) {
+	for(int i = 0; i <= strlen(sendee1); i++) {
+		while(!(USART2->ISR & USART_ISR_TXE));
+		USART2->TDR = sendee1[i];
+	}
+	nano_wait(10000000);
+	for(int j = 0; j <= strlen(sendee2); j++) {
+		while(!(USART2->ISR & USART_ISR_TXE));
+		USART2->TDR = sendee2[j];
+	}
+	nano_wait(10000000);
+	for(int k = 0; k <= strlen(sendee3); k++) {
+		while(!(USART2->ISR & USART_ISR_TXE));
+		USART2->TDR = sendee3[k];
+	}
+	nano_wait(10000000);
+	for(int x = 0; x <= strlen(sendee4); x++) {
+		while(!(USART2->ISR & USART_ISR_TXE));
+		USART2->TDR = sendee4[x];
+	}
+
+}
+
+void send_bluetooth_char_round_data(char* sendee1, char* sendee2) {
+	for(int i = 0; i <= strlen(sendee1); i++) {
+		while(!(USART2->ISR & USART_ISR_TXE));
+		USART2->TDR = sendee1[i];
+	}
+	nano_wait(10000000);
+	for(int j = 0; j <= strlen(sendee2); j++) {
+		while(!(USART2->ISR & USART_ISR_TXE));
+		USART2->TDR = sendee2[j];
+	}
+
+}
+
+//Assumes score is within 1000 and time is too
+void write_and_send_results() {
+	int n_one = targets_hit % 10;
+	int n_ten = (targets_hit % 100) / 10;
+	int n_hundred = (targets_hit % 1000) / 100;
+
+	char score[] = {n_hundred + 0x30, n_ten + 0x30, n_one + 0x30};
+
+
+	int time_one = GAMETIME % 10;
+	int time_ten = (GAMETIME % 100) / 10;
+	int time_hundred = (GAMETIME % 1000) / 100;
+
+	char timed[] = {time_hundred + 0x30, time_ten + 0x30, time_one + 0x30, 0xa};
+	send_bluetooth_char_four_at_once(result1, score, result2, timed);
+
+
+}
+
+// misplet timing :P
+void write_and_send_results_game1(int timeing) {
+	int n_one = targets_hit % 10;
+	int n_ten = (targets_hit % 100) / 10;
+	int n_hundred = (targets_hit % 1000) / 100;
+
+	char score[] = {n_hundred + 0x30, n_ten + 0x30, n_one + 0x30};
+
+	int time_one = timeing % 10;
+	int time_ten = (timeing % 100) / 10;
+	int time_hundred = (timeing % 1000) / 100;
+
+	char timed[] = {time_hundred + 0x30, time_ten + 0x30, time_one + 0x30};
+	send_bluetooth_char_four_at_once(result1, score, result2, timed);
+
+
+}
+
+void write_and_send_results_game2(int count) {
+	int n_one = count % 10;
+	int n_ten = (count % 100) / 10;
+	int n_hundred = (count % 1000) / 100;
+	int n_thousand = count / 1000;
+
+	char score[] = {n_thousand + 0x30, n_hundred + 0x30, n_ten + 0x30, n_one + 0x30};
+	if (game2round == 1) {
+		send_bluetooth_char_round_data(game2round1, score);
+	}
+	else if (game2round == 2) {
+		send_bluetooth_char_round_data(game2round2, score);
+	}
+	else if (game2round == 3) {
+		send_bluetooth_char_round_data(game2round3, score);
+	}
+	else if (game2round == 4) {
+		send_bluetooth_char_round_data(game2round4, score);
+	}
+	else if (game2round == 5) {
+		send_bluetooth_char_round_data(game2round5, score);
+	}
+
+
+
 }
 
 void init_tim3() { // game 3 and 4 timer
@@ -733,7 +842,7 @@ void TIM3_IRQHandler() {
         }
     }
     else { //gamemode # 4 if the counter counts up to the designated wait time switch targets
-    	if (counter == wait_time) {
+    	if (counter >= wait_time) {
     		change_target();
     		counter = 0;
     	}
@@ -760,9 +869,10 @@ void init_tim2() {
 void TIM2_IRQHandler() {
     TIM2->SR = ~TIM_SR_UIF;
     if (gamemode == 1) {
-    	if (time_out == 5) {
+    	if (time_out == 12) {
     		send_LED_message(tooSlowMessage);
 		    EXTI->FTSR &= ~(EXTI_FTSR_TR0 | EXTI_FTSR_TR1 | EXTI_FTSR_TR2 | EXTI_FTSR_TR3 | EXTI_FTSR_TR4);
+		    write_and_send_results_game1(time_left);
     		nano_wait(1000000000);
     		NVIC_SystemReset();
     	}
@@ -791,7 +901,7 @@ void TIM2_IRQHandler() {
     	    send_LED_message(gamefinishedMessage);
     	    nano_wait(1000000000);
     		send_LED_message(gametimeMessage);
-    		load_and_send_bluetooth2();
+    		write_and_send_results();
     	    //display_handle(targets_hit);
     	    nano_wait(1000000000);
     	    NVIC_SystemReset();
@@ -822,6 +932,7 @@ void EXTI0_1_IRQHandler() {
         if (gamemode == -1) {}
         else if (gamemode == 0) { // menu
         	// Starts endless mode
+        	send_bluetooth_char(mode1comm);
         	time_left = 0;
             Build_LED_Targets(ledstrip, halfred, halfred, halfred, halfred, halfred);
             send_LED_message(mode1Message);
@@ -841,6 +952,7 @@ void EXTI0_1_IRQHandler() {
         if (gamemode == -1) {}
         else if (gamemode == 0) { // menu
         	//Starts timed mode
+        	send_bluetooth_char(mode2comm);
             targets_hit = 0;
             Build_LED_Targets(ledstrip, halfred, halfred, halfred, halfred, halfred);
 			send_LED_message(mode2Message);
@@ -864,6 +976,7 @@ void EXTI2_3_IRQHandler() {
         if (gamemode == -1) {}
         else if (gamemode == 0) { // menu
         	//Starts reaction time mode
+        	send_bluetooth_char(mode3comm);
             Build_LED_Targets(ledstrip, halfred, halfred, halfred, halfred, halfred);
             send_LED_message(mode3Message);
             nano_wait(1000000000);
@@ -885,8 +998,9 @@ void EXTI2_3_IRQHandler() {
         if (gamemode == -1) {}
         else if (gamemode == 0) { // menu
             //Starts moving mode
+        	send_bluetooth_char(mode4comm);
         	targets_hit = 0;
-            Build_LED_Targets(ledstrip, halfred, halfred, halfred, halfred, halfred);
+        	Build_LED_Targets(ledstrip, halfred, halfred, halfred, halfred, halfred);
             send_LED_message(mode4Message);
             nano_wait(1000000000);
             Build_LED_Targets(ledstrip, off, off, off, off, off);
@@ -911,9 +1025,10 @@ void EXTI4_15_IRQHandler() {
         if (gamemode == -1) {}
         else if (gamemode == 0) { // menu
             //Starts multi mode
+        	send_bluetooth_char(mode5comm);
         	targets_hit = 0;
-            Build_LED_Targets(ledstrip, halfred, halfred, halfred, halfred, halfred);
-            send_LED_message(mode4Message);
+        	Build_LED_Targets(ledstrip, halfred, halfred, halfred, halfred, halfred);
+            send_LED_message(mode5Message);
             nano_wait(1000000000);
             Build_LED_Targets(ledstrip, off, off, off, off, off);
             countdown();
@@ -959,6 +1074,7 @@ int main() {
     init_tim3();
     init_pins();
     init_usart();
+    send_bluetooth_char(iCanSee);
     GPIOB->ODR = 0;
     menu_setup();
     nano_wait(100000);
