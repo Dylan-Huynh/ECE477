@@ -13,7 +13,7 @@
 #include <math.h>
 #include <string.h>
 
-#define GAMETIME 3
+#define GAMETIME 20
 #define ONE (38)
 #define ZERO (19)
 #define RS (0)
