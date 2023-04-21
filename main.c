@@ -772,7 +772,7 @@ void write_and_send_results_game1(int timeing) {
 	int time_ten = (timeing % 100) / 10;
 	int time_hundred = (timeing % 1000) / 100;
 
-	char timed[] = {time_hundred + 0x30, time_ten + 0x30, time_one + 0x30};
+	char timed[] = {time_hundred + 0x30, time_ten + 0x30, time_one + 0x30, 0xa};
 	send_bluetooth_char_four_at_once(result1, score, result2, timed);
 
 
