@@ -13,7 +13,7 @@
 #include <math.h>
 #include <string.h>
 
-#define GAMETIME 20
+#define GAMETIME 8
 #define ONE (38)
 #define ZERO (19)
 #define RS (0)
@@ -76,14 +76,17 @@ uint8_t mode2Message[MESSAGESIZE] = {0x42, 0x54, 0x30, 0x31, 0x35, 0x01, 0x00, 0
 uint8_t mode3Message[MESSAGESIZE] = {0x42, 0x54, 0x30, 0x31, 0x35, 0x01, 0x00, 0x00, 0x21, 0x41, 0x41, 0x33, 0x41, 0x00, 0x52, 0x00, 0x65, 0x00,
 		 	 	 	 	 	 	 	 0x61, 0x00, 0x63, 0x00, 0x74, 0x00, 0x69, 0x00, 0x6f, 0x00, 0x6e, 0x00, 0x20, 0x00, 0x6d, 0x00, 0x6f, 0x00,
 									 0x64, 0x00, 0x65, 0x00, 0x20};
+
 // Mode 4
-uint8_t mode4Message[MESSAGESIZE] = {0x42, 0x54, 0x30, 0x31, 0x35, 0x01, 0x00, 0x00, 0x21, 0x41, 0x41, 0x33, 0x41, 0x00, 0x20, 0x00, 0x20, 0x00,
-									 0x4d, 0x00, 0x75, 0x00, 0x6c, 0x00, 0x74, 0x00, 0x69, 0x00, 0x20, 0x00, 0x4d, 0x00, 0x6f, 0x00, 0x64, 0x00,
-									 0x65, 0x00, 0x20, 0x00, 0x20};
-// Mode 5
-uint8_t mode5Message[MESSAGESIZE] = {0x42, 0x54, 0x30, 0x31, 0x35, 0x01, 0x00, 0x00, 0x21, 0x41, 0x41, 0x33, 0x41, 0x00, 0x20, 0x00, 0x4d, 0x00,
+uint8_t mode4Message[MESSAGESIZE] = {0x42, 0x54, 0x30, 0x31, 0x35, 0x01, 0x00, 0x00, 0x21, 0x41, 0x41, 0x33, 0x41, 0x00, 0x20, 0x00, 0x4d, 0x00,
 		 	 	 	 	 	 	 	 0x6f, 0x00, 0x76, 0x00, 0x69, 0x00, 0x6e, 0x00, 0x67, 0x00, 0x20, 0x00, 0x4d, 0x00, 0x6f, 0x00, 0x64, 0x00,
 									 0x65, 0x00, 0x20, 0x00, 0x20};
+
+// Mode 5
+uint8_t mode5Message[MESSAGESIZE] = {0x42, 0x54, 0x30, 0x31, 0x35, 0x01, 0x00, 0x00, 0x21, 0x41, 0x41, 0x33, 0x41, 0x00, 0x20, 0x00, 0x20, 0x00,
+									 0x4d, 0x00, 0x75, 0x00, 0x6c, 0x00, 0x74, 0x00, 0x69, 0x00, 0x20, 0x00, 0x4d, 0x00, 0x6f, 0x00, 0x64, 0x00,
+									 0x65, 0x00, 0x20, 0x00, 0x20};
+
 // 1
 uint8_t count1Message[MESSAGESIZE] = {0x42, 0x54, 0x30, 0x31, 0x35, 0x01, 0x00, 0x00, 0x21, 0x41, 0x41, 0x33, 0x41, 0x00, 0x20, 0x00, 0x20, 0x00,
 		 	 	 	 	 	 	 	  0x20, 0x00, 0x20, 0x00, 0x20, 0x00, 0x20, 0x00, 0x31, 0x00, 0x20, 0x00, 0x20, 0x00, 0x20, 0x00, 0x20, 0x00,
@@ -336,6 +339,7 @@ void Build_LED_Targets(uint8_t *ledstrip, uint8_t *color1, uint8_t *color2, uint
 
 //This picks which targets are off and colored
 void Build_LED_Multi_Targets(uint8_t *color) {
+	DMA1_Channel2->CCR &= ~DMA_CCR_EN;
 	nano_wait(50000000);
 	uint8_t bit1 = targets & (0x1 << 0);
 	uint8_t bit2 = targets & (0x1 << 1);
@@ -355,7 +359,8 @@ void Build_LED_Multi_Targets(uint8_t *color) {
 	Build_LED_Targets(ledstrip, color_or_off1, color_or_off2, color_or_off3, color_or_off4, color_or_off5);
 
 	//Build_LED_Multi_Targets(halfgreen);
-	nano_wait(10000);
+	nano_wait(1000000);
+	DMA1_Channel2->CCR |= DMA_CCR_EN;
 }
 
 // Uses Usart to send input array, which is a size 42 array though to draw on the LED Matrix USART 1 is GPIOB6
@@ -441,6 +446,7 @@ void change_time(int n) {
 // Sets random target based on number wanted then calls function to light leds based on targets
 // Spaghetti code, check all the inputs for if it is set then rus it through the build led function
 void pick_multi_target(int n, uint8_t *color) {
+	DMA1_Channel2->CCR &= ~DMA_CCR_EN;
 	nano_wait(50000000);
 	targets = randomMulti(n);
 	uint8_t bit1 = targets & (0x1 << 0);
@@ -461,7 +467,8 @@ void pick_multi_target(int n, uint8_t *color) {
 	Build_LED_Targets(ledstrip, color_or_off1, color_or_off2, color_or_off3, color_or_off4, color_or_off5);
 
 	//Build_LED_Multi_Targets(halfgreen);
-	nano_wait(10000);
+	nano_wait(1000000);
+	DMA1_Channel2->CCR |= DMA_CCR_EN;
 }
 
 // logic of setting up the picking up targets
@@ -498,28 +505,28 @@ void change_target(void){
 	if (targets == 0x1){ //1->2
 		targets = 0x2;
 		Build_LED_Targets(ledstrip, off, green, off, off, off);
-		nano_wait(10000);
+		nano_wait(1000000);
 	}
 	else if (targets == 0x2){ //2->3
 		targets = 0x4;
 		Build_LED_Targets(ledstrip, off, off, green, off, off);
-		nano_wait(10000);
+		nano_wait(1000000);
 	}
 	else if (targets == 0x4){ //3->4
 		targets = 0x8;
 		Build_LED_Targets(ledstrip, off, off, off, green, off);
-		nano_wait(10000);
+		nano_wait(1000000);
 	}
 
 	else if (targets == 0x8){ //4->5
 		targets = 0x10;
 		Build_LED_Targets(ledstrip, off, off, off, off, green);
-		nano_wait(10000);
+		nano_wait(1000000);
 	}
 	else if (targets == 0x10){ //5->1
 		targets = 0x1;
 		Build_LED_Targets(ledstrip, green, off, off, off, off);
-		nano_wait(10000);
+		nano_wait(1000000);
 	}
 }
 
@@ -772,7 +779,7 @@ void write_and_send_results_game1(int timeing) {
 	int time_ten = (timeing % 100) / 10;
 	int time_hundred = (timeing % 1000) / 100;
 
-	char timed[] = {time_hundred + 0x30, time_ten + 0x30, time_one + 0x30, 0xa};
+	char timed[] = {time_hundred + 0x30, time_ten + 0x30, time_one + 0x30};
 	send_bluetooth_char_four_at_once(result1, score, result2, timed);
 
 
@@ -869,7 +876,7 @@ void init_tim2() {
 void TIM2_IRQHandler() {
     TIM2->SR = ~TIM_SR_UIF;
     if (gamemode == 1) {
-    	if (time_out == 12) {
+    	if (time_out == 5) {
     		send_LED_message(tooSlowMessage);
 		    EXTI->FTSR &= ~(EXTI_FTSR_TR0 | EXTI_FTSR_TR1 | EXTI_FTSR_TR2 | EXTI_FTSR_TR3 | EXTI_FTSR_TR4);
 		    write_and_send_results_game1(time_left);
